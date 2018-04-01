@@ -1,4 +1,4 @@
-from lib.Pages import Ebay
+from lib.Pages.Ebay import Ebay
 
 page = Ebay()
 

@@ -1,5 +1,5 @@
 import time
-from lib.Pages import AutoTempest
+from lib.Pages.AutoTempest import AutoTempest
 
 page = AutoTempest()
 

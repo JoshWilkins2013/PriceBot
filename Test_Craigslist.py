@@ -1,4 +1,4 @@
-from lib.Pages import Craigslist
+from lib.Pages.Craigslist import Craigslist
 
 page = Craigslist()
 
