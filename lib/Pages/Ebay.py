@@ -6,6 +6,22 @@ class Ebay(Page):
 	def __init__(self):
 		Page.__init__(self, "https://www.ebay.com/sch/6001/i.html?&_sadis=&_stpos=&_nkw=+&LH_BIN=1")
 	
+	def get_car_results(self):
+		i = 0
+		ads_info = self.get_ads()
+		for ad in ads_info:
+			print len(ads_info) - i  # Some indication of progress
+			self.bro.driver.get(ad['Link'])  # Go to ad link
+			attributes = self.get_attrs()
+			for cat, val in attributes.iteritems():
+				ad[cat] = val
+			i += 1
+			
+		self.bro.driver.close()
+
+		# Save data to csv file
+		self.write_to_csv('Ebay', ads_info)
+	
 	def _get_page_ads(self):
 		""" Get ads just on this page """
 		ads_info = []

@@ -1,3 +1,4 @@
+import time
 from Page import Page
 
 
@@ -5,7 +6,34 @@ class AutoTempest(Page):
 	
 	def __init__(self):
 		Page.__init__(self, "https://www.autotempest.com")
-		
+	
+	def get_car_results(self):
+		self.bro.click_button("//form[@id='search-main']//button[@type='submit']")  # Submit Button
+		time.sleep(1) # Obnoxious but page closes if this isn't here
+		self.bro.click_button("//button[@class='change-sources show-box']")  # Sources Button
+		self.bro.click_button("//span[@class='checkboxWrap eba mash']")  # Ebay Auctions Button
+		self.bro.click_button("//button[@class='update-results']")  # Update Button
+
+		ads_info = []
+		ads = self.get_ads()
+		for ad in ads:
+			print len(ads) - len(ads_info)  # Some indication of progress
+			title = self.bro.get_element_text(".//div[@class='description-wrap']//h2//a", parent=ad)  # Ad Title
+			link = self.bro.get_element_attribute(".//div[@class='description-wrap']//h2//a", "href", parent=ad)  # Ad Link
+			
+			year = self.get_year(title)  # Get year from title text
+			
+			price = self.bro.get_element_text(".//div[@class='price']", parent=ad)  # Ad Price
+			mileage = self.bro.get_element_text(".//span[@class='info mileage']", parent=ad)  # Ad Mileage
+			
+			ad_info = {"Title":title, "Year":year, "Mileage":mileage, "Price":price, "Link":link}
+			ads_info.append(ad_info)  # Keep track of all Ad Information
+
+		self.bro.driver.close()
+
+		# Save data to csv file
+		self.write_to_csv("AutoTempest", ads_info)
+	
 	def get_ads(self):
 		more_buttons = self.bro.driver.find_elements_by_xpath("//button[@class='more-results']")  # More Buttons
 		while more_buttons != []:

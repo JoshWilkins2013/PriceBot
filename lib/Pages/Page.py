@@ -1,3 +1,4 @@
+import os
 import time
 import pandas as pd
 from ..Browser import Browser
@@ -30,9 +31,17 @@ class Page(object):
 		except:
 			return ''
 	
-	def write_to_csv(self, suffix, data):
+	def write_to_csv(self, suffix, data, type="Automobile"):
 		""" Write data to csv file """
 		df = pd.DataFrame(data=data)
 		df = df.convert_objects(convert_numeric = True)
-		fname = self.make + self.model + '_' + suffix + '.csv'
-		df.to_csv(fname)
+		
+		if type == "Automobile":
+			fname = self.make + self.model + '_' + suffix + '.csv'
+		else:
+			fname = 'Apts_' + suffix + '.csv'
+		
+		if not os.path.exists(".\\Data"):
+			os.makedirs(".\\Data")
+		
+		df.to_csv(".\\Data\\" + fname, index=False)
