@@ -43,18 +43,19 @@ class Ebay(Page):
 	""" Not fully tested """
 	
 	def __init__(self):
-		Page.__init__(self, "https://www.ebay.com/sch/6001/i.html?&_sadis=&_stpos=&_nkw=+")
+		Page.__init__(self, "https://www.ebay.com/sch/6001/i.html?&_sadis=&_stpos=&_nkw=+&LH_BIN=1")
 	
 	def _get_page_ads(self):
 		""" Get ads just on this page """
 		ads_info = []
 		ads = self.bro.driver.find_elements_by_xpath("//li[contains(@class,'lvresult clearfix li')]")
 		for ad in ads:
-			title = self.bro.get_element_text(".//h3[@class='lvtitle']//a")
-			link = self.bro.get_element_attribute(".//h3[@class='lvtitle']//a", "href")
+			title = self.bro.get_element_text(".//h3[@class='lvtitle']//a", ad)
+			if not title: break  # Don't get international ones??
+			link = self.bro.get_element_attribute(".//h3[@class='lvtitle']//a", "href", ad)
 			year = self.get_year(title)
 			
-			price = self.bro.get_element_text(".//li[@class='lvprice prc']")
+			price = self.bro.get_element_text(".//li[@class='lvprice prc']", ad)
 			price = int(float(price[1:].replace(',', '')))
 			ad_info = {"Title":title, "Year":year, "Price":price, "Link":link}
 			ads_info.append(ad_info)
@@ -84,9 +85,12 @@ class Ebay(Page):
 		return ''
 	
 	def get_attrs(self):
-		attributes = {"State":self.get_state}
+		attributes = {"State":self.get_state()}
 		attrLabels = self.bro.driver.find_elements_by_xpath("//div[@class='itemAttr']//table[not(@id='itmSellerDesc')]//td")
 		i = 0
+		
+		cats = []
+		vals = []
 		for attr in attrLabels:
 			if (i%2)==1:
 				val = attr.text
