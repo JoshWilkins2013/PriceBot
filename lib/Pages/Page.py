@@ -34,7 +34,7 @@ class Page(object):
 	def write_to_csv(self, suffix, data, type="Automobile"):
 		""" Write data to csv file """
 		df = pd.DataFrame(data=data)
-		df = df.convert_objects(convert_numeric = True)
+		df.apply(pd.to_numeric, errors='coerce') # Coerces errors into NaN values
 		
 		if type == "Automobile":
 			fname = self.make + self.model + '_' + suffix + '.csv'
@@ -43,5 +43,5 @@ class Page(object):
 		
 		if not os.path.exists(".\\Data"):
 			os.makedirs(".\\Data")
-		
-		df.to_csv(".\\Data\\" + fname, index=False)
+
+		df.to_csv(".\\Data\\" + fname, encoding='utf-8', index=False)

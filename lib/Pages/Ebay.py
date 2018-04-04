@@ -2,7 +2,7 @@ from Page import Page
 
 
 class Ebay(Page):
-	
+	""" I think this is broken - only gets ads from one page? """
 	def __init__(self):
 		Page.__init__(self, "https://www.ebay.com/sch/6001/i.html?&_sadis=&_stpos=&_nkw=+&LH_BIN=1")
 	

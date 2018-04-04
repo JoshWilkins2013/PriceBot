@@ -30,8 +30,11 @@ class Craigslist(Page):
 			for attr in attr_texts:
 				key = next((attr.split(':')[0].strip() for x in attr.split(':')[0].strip().split() if x in attrs_to_keep), '')
 				if key:
-					value = next((attr.split(':')[1].strip() for x in attr.split(':')[0].strip().split() if x in attrs_to_keep), '')
-					ad_info[key] = value
+					try:
+						value = next((attr.split(':')[1].strip() for x in attr.split(':')[0].strip().split() if x in attrs_to_keep), '')
+						ad_info[key] = value
+					except:
+						pass
 			
 			ads_info.append(ad_info)
 

@@ -1,52 +1,85 @@
+import os
 import glob
 import numpy as np
 import pandas as pd
+from itertools import groupby
 from matplotlib import pyplot as plt
 
 
 class Analyzer(object):
 	
 	def __init__(self):
-		self.data = self.merge_results()
+		self.merge_results()
+	
+	def _clean_results(self):
+		""" Clean up some of the columns to be consistent """
+		if self.file_type == "Automobile":
+			self.data.Mileage.replace([',', 'mi.', 'nan', ' '], '', regex=True, inplace = True)  # Fix mileage column
+		else:
+			self.data.Area = self.data.Area.map(lambda x: str(x)[:-3])  # Fix square footage column
+		
+		self.data.Price.replace([',', '\$'], '', regex=True, inplace=True)  # Always fix price column (, and $ removed)
+		self.data.replace('^\s*$', np.nan, regex=True, inplace = True)  # Replace all empty values with np.NaN
+		self.data = self.data.dropna(axis=1, how='all')  # Remove Null Columns
+		
+		self.data.apply(pd.to_numeric, errors='coerce') # Coerces errors into NaN values
+	
+	def get_data(self, dir='.\\Data\\'):
+		""" Gather & sort data by item name in Data folder
+		return: An ordered dictionary {Item : [list of files]}
+		"""
+		# Get list of data files
+		csv_files = glob.glob(dir + "*.csv")
+		
+		# Groups list into dictionary-like object by SN #
+		item_groups = groupby(csv_files, lambda x: x[:x.find('_')])
+		item_groups = dict( (item, list(files)) for (item, files) in item_groups )
+		
+		return item_groups
+	
+	def merge_results(self):
+		self.data = pd.DataFrame()
+		item_groups = self.get_data()
+		
+		for item, file_group in item_groups.iteritems():
+			item_data = pd.DataFrame()
+			for file_name in file_group:
+				df = pd.read_csv(file_name)
+				item_data = item_data.append(df)
+				
+			item_data.to_csv(item + "_Merged.csv", index=False)
+			self.data = self.data.append(item_data)
+			
+			# Now that we know the data is safely stored, remove the old stuff
+			for file_name in file_group:
+				os.remove(file_name)
 		
 		if 'Mileage' in self.data.columns:
 			self.file_type = "Automobile"
 		else:
 			self.file_type = "Apartment"
-	
-	def merge_results(self):
-		all_data = pd.DataFrame()
-		files = glob.glob(".\\Data\\*.csv")  # Get csv files in data folder
-
-		for filename in files:
-			df = pd.read_csv(filename)
-			all_data = all_data.append(df)
-
-		all_data = all_data.dropna(axis=1, how='all')  # Remove Null Columns
-		all_data.to_csv("MergedData.csv", index=False)
-		return all_data
+		
+		self._clean_results()
+		self.data.to_csv("MergedData.csv", index=False)
 
 	def plot_results(self):
 	
 		fig = plt.figure(figsize=(13,6))
+		
 		if self.file_type == "Automobile":
 			cols = ['Mileage', 'Price', 'Year', 'Link']
-			self.data.Mileage.replace([',', 'mi.', 'nan', ' '], '', regex=True, inplace = True)  # Replace all empty values with np.NaN
-			
 			plt.xlabel('Mileage')
 			plt.title('Mileage vs Cost (Year in Color)')
 		else:
 			cols = ['Area', 'Price', 'Bedrooms', 'Link']
-			self.data['Area'] = self.data['Area'].map(lambda x: str(x)[:-3])
-			
 			plt.xlabel('Square Feet')
 			plt.title('SqFt vs Cost (Number of Bedrooms in Color)')
 		
 		new_df = self.data[cols]
-		new_df.dropna(axis=0, how='any', inplace=True)  # Remove rows with missing values
-		new_df.Price.replace([',', '\$'], '', regex=True, inplace=True)  # Alwats fix price (, and $ removed)
-		new_df.replace('^\s*$', np.nan, regex=True, inplace = True)  # Replace all empty values with np.NaN
-		new_df[cols[:-1]] = new_df[cols[:-1]].apply(pd.to_numeric)
+		new_df = new_df.dropna(axis=0, how='any')  # Remove rows with missing values
+		
+		for col in cols[:-1]:
+			new_df[col] = new_df[col].astype(int)
 		
 		s = plt.scatter(x=new_df[cols[0]], y=new_df[cols[1]], c=new_df[cols[2]], cmap='plasma')
 		s.set_urls(new_df['Link'].values)
