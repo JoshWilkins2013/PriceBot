@@ -40,21 +40,22 @@ class Analyzer(object):
 			item_data = item_data.dropna(axis=1, how='all')  # Remove Null Columns
 			item_data = item_data.apply(pd.to_numeric, errors='coerce') # Coerces errors into NaN values
 
-	def get_data(self, dir='.\\Data\\'):
+	def _get_data_groups(self, dir='.\\Data\\'):
 		""" Gather & sort data by item name in Data folder
 		return: An ordered dictionary {Item : [list of files]}
 		"""
-		# Get list of data files
-		csv_files = glob.glob(dir + "*.csv")
 
-		# Groups list into dictionary-like object by SN #
-		item_groups = groupby(csv_files, lambda x: x[:x.find('_')])
+		item_groups = groupby(self._get_data(dir), lambda x: x[:x.find('_')])
 		item_groups = dict( (item, list(files)) for (item, files) in item_groups )
 
 		return item_groups
 
+	def _get_data(self, dir='.\\Data\\'):
+		""" Get list of data files """
+		return glob.glob(dir + "*.csv")
+
 	def merge_results(self):
-		item_groups = self.get_data()
+		item_groups = self._get_data_groups()
 
 		for item, file_group in item_groups.iteritems():
 			item_data = pd.DataFrame()
@@ -76,6 +77,22 @@ class Analyzer(object):
 			self.file_type = "Apartment"
 
 		self._clean_results()
+
+	def merge_all_data(self):
+		""" Merges all data into same csv file """
+		csv_files = self._get_data()
+
+		all_data = pd.DataFrame()
+		for file_name in csv_files:
+			temp_df = pd.read_csv(file_name)
+			all_data.append(temp_df)
+
+		all_data.to_csv("AllData_Merged.csv", index=False)
+
+		# Now that we know the data is safely stored, remove the old stuff
+		for file_name in csv_files:
+			if "Merged" in file_name: continue
+			os.remove(file_name)
 
 	def _poly_fit(self, degree=2, **kwargs):
 		return make_pipeline(PolynomialFeatures(degree), LinearRegression(**kwargs))
