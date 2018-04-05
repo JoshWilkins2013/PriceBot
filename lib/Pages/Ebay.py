@@ -2,13 +2,40 @@ from Page import Page
 
 
 class Ebay(Page):
-	""" I think this is broken - only gets ads from one page? """
+
 	def __init__(self):
-		Page.__init__(self, "https://www.ebay.com/sch/6001/i.html?&_sadis=&_stpos=&_nkw=+&LH_BIN=1")
-	
+		Page.__init__(self, "https://www.ebay.com/sch/6001/i.html?&_sadis=&_stpos=&_nkw=+&LH_BIN=1&_ipg=200")
+
+	def _get_page_ads(self):
+		""" Get ads just on this page """
+		ads_info = []
+		ads = self.bro.driver.find_elements_by_xpath("//li[contains(@class,'lvresult clearfix li')]")
+		for ad in ads:
+			title = self.bro.get_element_text(".//h3[@class='lvtitle']//a", ad)
+			if not title: break  # Don't get international ones??
+			link = self.bro.get_element_attribute(".//h3[@class='lvtitle']//a", "href", ad)
+			year = self.get_year(title)
+
+			price = self.bro.get_element_text(".//li[@class='lvprice prc']", ad)
+			price = int(float(price[1:].replace(',', '')))
+			ad_info = {"Title": title, "Year": year, "Price": price, "Link": link}
+			ads_info.append(ad_info)
+		return ads_info
+
+	def _get_ads(self):
+		""" Get all ads across each page """
+		ads_info = self._get_page_ads()
+		count = self.bro.driver.find_element_by_xpath("//span[@class='rcnt']")
+		if int(count.text.replace(',', '')) > 200:
+			for x in range(int(count.text.replace(',', '')) / 200):
+				self.bro.click_button("//td[@class='pagn-next']")
+				ads_info.extend(self._get_page_ads())
+
+		return ads_info
+
 	def get_car_results(self):
 		i = 0
-		ads_info = self.get_ads()
+		ads_info = self._get_ads()
 		for ad in ads_info:
 			print len(ads_info) - i  # Some indication of progress
 			self.bro.driver.get(ad['Link'])  # Go to ad link
@@ -21,33 +48,6 @@ class Ebay(Page):
 
 		# Save data to csv file
 		self.write_to_csv('Ebay', ads_info)
-	
-	def _get_page_ads(self):
-		""" Get ads just on this page """
-		ads_info = []
-		ads = self.bro.driver.find_elements_by_xpath("//li[contains(@class,'lvresult clearfix li')]")
-		for ad in ads:
-			title = self.bro.get_element_text(".//h3[@class='lvtitle']//a", ad)
-			if not title: break  # Don't get international ones??
-			link = self.bro.get_element_attribute(".//h3[@class='lvtitle']//a", "href", ad)
-			year = self.get_year(title)
-			
-			price = self.bro.get_element_text(".//li[@class='lvprice prc']", ad)
-			price = int(float(price[1:].replace(',', '')))
-			ad_info = {"Title":title, "Year":year, "Price":price, "Link":link}
-			ads_info.append(ad_info)
-		return ads_info
-	
-	def get_ads(self):
-		""" Get all ads across each page """
-		ads_info = self._get_page_ads()
-		count = self.bro.driver.find_element_by_xpath("//span[@class='rcnt']")
-		if int(count.text.replace(',', '')) > 200:
-			for x in range(int(count.text.replace(',', ''))/200):
-				self.bro.click_button("//td[@class='pagn-next']")
-				ads_info.extend(self._get_page_ads())
-		
-		return ads_info
 		
 	def get_state(self):
 		""" Get location information (state) """

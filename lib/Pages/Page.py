@@ -10,18 +10,18 @@ class Page(object):
 		print ''
 		user_make = raw_input("Make: ").capitalize()
 		user_model = raw_input("Model: ").capitalize()
-		user_radius = raw_input("Radius: ")
 		user_zip = raw_input("Zip: ")
-		
+		user_radius = raw_input("Radius: ")
+
 		if url: self.bro = Browser(url)
 		else: self.bro = Browser()
 		
 		self.make = user_make
 		time.sleep(1)  # Needed for AutoTempest -- should fix this somehow
 		self.model = user_model
-		self.radius = user_radius
 		self.zip = user_zip
-	
+		self.radius = user_radius
+
 	def get_year(self, title):
 		""" Get year from title text """
 		try:
