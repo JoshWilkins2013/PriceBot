@@ -8,23 +8,24 @@ class AutoTempest(Page):
 		Page.__init__(self, "https://www.autotempest.com")
 	
 	def get_car_results(self):
-		self.bro.click_button("//form[@id='search-main']//button[@type='submit']")  # Submit Button
+		self.bro.driver.find_element_by_xpath("//form[@id='search-main']//button[@type='submit']").click()  # Submit Button
 		time.sleep(1) # Obnoxious but page closes if this isn't here
-		self.bro.click_button("//button[@class='change-sources show-box']")  # Sources Button
-		self.bro.click_button("//span[@class='checkboxWrap eba mash']")  # Ebay Auctions Button
-		self.bro.click_button("//button[@class='update-results']")  # Update Button
+		self.bro.driver.find_element_by_xpath("//button[@class='change-sources show-box']").click()  # Sources Button
+		self.bro.driver.find_element_by_xpath("//span[@class='checkboxWrap eba mash']").click()  # Ebay Auctions Button
+		self.bro.driver.find_element_by_xpath("//button[@class='update-results']").click()  # Update Button
 
 		ads_info = []
 		ads = self.get_ads()
 		for ad in ads:
 			print len(ads) - len(ads_info)  # Some indication of progress
-			title = self.bro.get_element_text(".//div[@class='description-wrap']//h2//a", parent=ad)  # Ad Title
-			link = self.bro.get_element_attribute(".//div[@class='description-wrap']//h2//a", "href", parent=ad)  # Ad Link
+			title_element = ad.find_element_by_xpath(".//div[@class='description-wrap']//h2//a")
+			title = title_element.text# Ad Title
+			link = title_element.get_attribute("href")
 			
 			year = self.get_year(title)  # Get year from title text
-			
-			price = self.bro.get_element_text(".//div[@class='price']", parent=ad)  # Ad Price
-			mileage = self.bro.get_element_text(".//span[@class='info mileage']", parent=ad)  # Ad Mileage
+
+			price = ad.find_element_by_xpath(".//div[@class='price']").text # Ad Price
+			mileage = ad.find_element_by_xpath(".//span[@class='info mileage']").text # Ad Mileage
 			
 			ad_info = {"Title":title, "Year":year, "Mileage":mileage, "Price":price, "Link":link}
 			ads_info.append(ad_info)  # Keep track of all Ad Information

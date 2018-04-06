@@ -1,3 +1,6 @@
 *.pyc
 /.idea/
 /.ipynb_checkpoints/
+/pricebot.egg-info
+debug.log
+.ipynb_checkpoints/

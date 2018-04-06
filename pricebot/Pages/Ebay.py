@@ -11,12 +11,12 @@ class Ebay(Page):
 		ads_info = []
 		ads = self.bro.driver.find_elements_by_xpath("//li[contains(@class,'lvresult clearfix li')]")
 		for ad in ads:
-			title = self.bro.get_element_text(".//h3[@class='lvtitle']//a", ad)
-			if not title: break  # Don't get international ones??
-			link = self.bro.get_element_attribute(".//h3[@class='lvtitle']//a", "href", ad)
+			title = ad.find_element_by_xpath(".//h3[@class='lvtitle']//a").text
+			if not title: break  # Don't get non-regional / international ones
+			link = ad.find_element_by_xpath(".//h3[@class='lvtitle']//a").get_attribute("href")
 			year = self.get_year(title)
 
-			price = self.bro.get_element_text(".//li[@class='lvprice prc']", ad)
+			price = ad.find_element_by_xpath(".//li[@class='lvprice prc']").text
 			price = int(float(price[1:].replace(',', '')))
 			ad_info = {"Title": title, "Year": year, "Price": price, "Link": link}
 			ads_info.append(ad_info)
@@ -28,7 +28,7 @@ class Ebay(Page):
 		count = self.bro.driver.find_element_by_xpath("//span[@class='rcnt']")
 		if int(count.text.replace(',', '')) > 200:
 			for x in range(int(count.text.replace(',', '')) / 200):
-				self.bro.click_button("//td[@class='pagn-next']")
+				self.bro.driver.find_element_by_xpath("//td[@class='pagn-next']").click()
 				ads_info.extend(self._get_page_ads())
 
 		return ads_info

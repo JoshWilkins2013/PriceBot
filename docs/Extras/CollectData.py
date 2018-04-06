@@ -1,7 +1,6 @@
 import os
 import glob
 import pandas as pd
-import numpy as np
 from browser import browser
 from selenium.webdriver.support.ui import Select
 
