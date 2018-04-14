@@ -18,14 +18,17 @@ class AutoTempest(Page):
 		ads = self.get_ads()
 		for ad in ads:
 			print len(ads) - len(ads_info)  # Some indication of progress
-			title_element = ad.find_element_by_xpath(".//div[@class='description-wrap']//h2//a")
-			title = title_element.text# Ad Title
-			link = title_element.get_attribute("href")
 			
-			year = self.get_year(title)  # Get year from title text
-
-			price = ad.find_element_by_xpath(".//div[@class='price']").text # Ad Price
-			mileage = ad.find_element_by_xpath(".//span[@class='info mileage']").text # Ad Mileage
+			try:
+				title_element = ad.find_element_by_xpath(".//div[@class='description-wrap']//h2//a")
+				title = title_element.text# Ad Title
+				link = title_element.get_attribute("href")
+				year = self.get_year(title)  # Get year from title text
+				price = ad.find_element_by_xpath(".//div[@class='price']").text # Ad Price
+				mileage = ad.find_element_by_xpath(".//span[@class='info mileage']").text # Ad Mileage
+			except:
+				print "Ad contained bad information"
+				continue
 			
 			ad_info = {"Title":title, "Year":year, "Mileage":mileage, "Price":price, "Link":link}
 			ads_info.append(ad_info)  # Keep track of all Ad Information

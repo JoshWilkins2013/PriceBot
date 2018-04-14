@@ -18,6 +18,7 @@ class Ebay(Page):
 
 			price = ad.find_element_by_xpath(".//li[@class='lvprice prc']").text
 			price = int(float(price[1:].replace(',', '')))
+
 			ad_info = {"Title": title, "Year": year, "Price": price, "Link": link}
 			ads_info.append(ad_info)
 		return ads_info

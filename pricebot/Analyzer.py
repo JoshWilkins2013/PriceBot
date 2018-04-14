@@ -99,10 +99,11 @@ class Analyzer(object):
 
 	def best_fit(self, item, col='Age', verbose=False):
 
-		param_grid = {'polynomialfeatures__degree': np.arange(2, 7, 1),
+		param_grid = {'polynomialfeatures__degree': np.arange(2, 3, 1),
 					  'linearregression__fit_intercept': [True, False],
 					  'linearregression__normalize': [True, False]}
-
+		
+		plt.subplot(1,2,1)
 		if col == 'Age':
 			group = self.data[item].groupby(self.data[item][col])[['Price']].mean().reset_index()[col].values
 			mean_costs = self.data[item].groupby(self.data[item][col])[['Price']].mean().reset_index()['Price'].values
@@ -112,26 +113,26 @@ class Analyzer(object):
 			X_test = np.linspace(group[0], group[-1], len(group)+2)[:, None]
 			X = group.reshape(len(group),1)
 			y = metric
+			plt.xlim(xmin=0, xmax=18)
 		else:
 			temp_df = self.data[item][[col, "Price"]].dropna(axis=0, how='any')  # Remove rows with missing values
 			X = temp_df[col].values.reshape(len(temp_df),1)
 			y = temp_df["Price"].values
 			X_test = np.linspace(min(temp_df[col]), max(temp_df[col]), 1000)[:, None]
+			plt.xlim(xmin=0, xmax=250000)
 
 		grid = GridSearchCV(self._poly_fit(), param_grid)
 		grid.fit(X, y)
 
 		model = grid.best_estimator_
 
-		plt.subplot(1,2,1)
 		if verbose:
 			plt.scatter(X.ravel(), y)
 
 		y_test = model.fit(X, y).predict(X_test)
 		plt.plot(X_test.ravel(), y_test, label=item)
 
-		plt.xlim(xmin=0)
-		plt.ylim(ymin=0)
+		plt.ylim(ymin=0, ymax=25000)
 		plt.title(col + ' vs Cost')
 		plt.grid(which='both')
 		plt.legend()
@@ -144,12 +145,14 @@ class Analyzer(object):
 		p = np.poly1d(np.negative(coeffs))
 		if col == 'Mileage':
 			p *= 10000 # Convert derivative to $ per 10,000 miles instead of $ per mile
+			plt.xlim(xmin=0, xmax=300000)
+		else:
+			plt.xlim(xmin=0, xmax=18)
 
 		p2 = np.polyder(p)
 		plt.plot(X_test.ravel(), p2(X_test.ravel()), label=item)
 
-		plt.xlim(xmin=0)
-		plt.ylim(ymin=0)
+		plt.ylim(ymin=0, ymax=3000)
 		plt.title(col + ' vs Cost')
 		plt.grid(which='both')
 		plt.legend()
