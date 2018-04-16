@@ -33,9 +33,10 @@ class Analyzer(object):
 				item_data['Age'] = 2018 - item_data['Year'] # Change years to Age
 				del item_data['Year']
 			else:
-				item_data.Area = item_data.Area.map(lambda x: str(x)[:-3])  # Fix square footage column
-				item_data.Price.replace([',', '\$'], '', regex=True,
-										inplace=True)  # Always fix price column (, and $ removed)
+				item_data.Area.replace(['ft2'], '', regex=True, inplace=True)  # Remove ft2 from square footage column
+				item_data.Price.replace([',', '\$'], '', regex=True, inplace=True)  # Always fix price column (, and $ removed)
+				item_data.drop(item_data[item_data.Price > 2500].index, inplace=True) # Remove cars made before 2000
+			
 			item_data.replace('^\s*$', np.nan, regex=True, inplace = True)  # Replace all empty values with np.NaN
 			item_data = item_data.dropna(axis=1, how='all')  # Remove Null Columns
 			item_data = item_data.apply(pd.to_numeric, errors='coerce') # Coerces errors into NaN values
@@ -156,6 +157,7 @@ class Analyzer(object):
 		plt.title(col + ' vs Cost')
 		plt.grid(which='both')
 		plt.legend()
+		return coeffs
 
 	def plot_results(self, item):
 
@@ -181,6 +183,37 @@ class Analyzer(object):
 		plt.colorbar()
 		plt.grid(which='both')
 		plt.ylabel('Cost')
-		plt.title('Mileage vs Cost (Year in Color)')
+		plt.show()
+		fig.canvas.print_figure('MergedData.svg')
+	
+	def get_best_cars(self, item):
+	
+		for i in range(4):
+			# Remove things above Mileage line of best fit
+			coeffs = self.best_fit(item, 'Mileage')
+			p = np.poly1d(coeffs)
+			plt.clf()
+			plt.scatter(x=self.data[item]['Mileage'], y=self.data[item]['Price'], cmap='plasma_r')
+			self.data[item] = self.data[item][self.data[item]['Price'] < p(self.data[item]['Mileage'])]
+			
+			plt.plot(self.data[item]['Mileage'], p(self.data[item]['Mileage']), 'ro')
+			plt.show()
+			
+			# Remove things above Age line of best fit
+			# coeffs = self.best_fit(item, 'Age')
+
+			# p = np.poly1d(coeffs)
+			# plt.clf()
+			# plt.scatter(x=self.data[item]['Age'], y=self.data[item]['Price'], cmap='plasma_r')
+			# self.data[item] = self.data[item][self.data[item]['Price'] < p(self.data[item]['Age'])]
+			
+			# plt.plot(self.data[item]['Age'], p(self.data[item]['Age']), 'ro')
+			# plt.show()
+		
+		plt.close()
+		#self.plot_results(item)
+		fig = plt.figure(figsize=(13,6))
+		s = plt.scatter(self.data[item]['Age'], y=self.data[item]['Price'])
+		s.set_urls(self.data[item]['Link'].values)
 		plt.show()
 		fig.canvas.print_figure('MergedData.svg')

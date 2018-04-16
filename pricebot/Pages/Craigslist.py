@@ -44,7 +44,7 @@ class Craigslist(Page):
 		self.write_to_csv("Craigslist", ads_info)
 	
 	def get_apt_results(self):
-		cl = CraigslistHousing(site='boston', category='aap', filters={'zip_code':zip, 'search_distance':radius})  #search_distance='5'
+		cl = CraigslistHousing(site='boston', category='aap', filters={'zip_code':self.zip, 'search_distance':self.radius})
 		results = cl.get_results()
 
 		ads_info = []
