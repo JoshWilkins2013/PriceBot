@@ -31,7 +31,6 @@ class Analyzer(object):
 				item_data.drop(item_data[(item_data.Mileage < 1000) | (item_data.Mileage > 300000)].index, inplace=True) # Remove cars with over 300,000 miles
 
 				item_data['Age'] = 2018 - item_data['Year'] # Change years to Age
-				del item_data['Year']
 			else:
 				item_data.Area.replace(['ft2'], '', regex=True, inplace=True)  # Remove ft2 from square footage column
 				item_data.Price.replace([',', '\$'], '', regex=True, inplace=True)  # Always fix price column (, and $ removed)
@@ -157,6 +156,19 @@ class Analyzer(object):
 		plt.title(col + ' vs Cost')
 		plt.grid(which='both')
 		plt.legend()
+		
+		# Add predicted value of data to csv file
+		p = np.poly1d(coeffs)
+		p2 = np.polyder(p)
+		if col == 'Age':
+			self.data[item]['Price Diff Age'] = self.data[item]['Age'] - p(self.data[item]['Age'])
+			self.data[item]['Depreciate Age'] = p2(self.data[item]['Age'])
+		if col == 'Mileage':
+			self.data[item]['Price Diff Mileage'] = self.data[item]['Mileage'] - p(self.data[item]['Mileage'])
+			self.data[item]['Depreciate Mileage'] = p2(self.data[item]['Mileage'])*10000
+		
+		self.data[item].to_csv(".\\Data\\" + item + "_Merged.csv", index=False)
+		
 		return coeffs
 
 	def plot_results(self, item):

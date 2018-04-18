@@ -62,4 +62,4 @@ class Craigslist(Page):
 			ads_info.append(ad_info)
 		
 		# Save data to csv file
-		self.write_to_csv("Craigslist", ads_info, "Apartments")
+		self.write_to_csv("Craigslist", ads_info)

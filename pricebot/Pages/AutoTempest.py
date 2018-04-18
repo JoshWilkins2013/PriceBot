@@ -6,7 +6,7 @@ class AutoTempest(Page):
 	
 	def __init__(self):
 		Page.__init__(self, "https://www.autotempest.com")
-	
+
 	def get_car_results(self):
 		self.bro.driver.find_element_by_xpath("//form[@id='search-main']//button[@type='submit']").click()  # Submit Button
 		time.sleep(1) # Obnoxious but page closes if this isn't here
