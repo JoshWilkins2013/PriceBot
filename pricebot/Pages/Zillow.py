@@ -1,11 +1,12 @@
 import re
 import time
+import zipcode
 from Page import Page
 
 
 class Zillow(Page):
-	
-	def __init__(self, zip=None):
+
+	def __init__(self, zip=None, radius=None):
 
 		print ''
 
@@ -13,7 +14,9 @@ class Zillow(Page):
 		if not self.zip:
 			self.zip = raw_input("Zip: ")
 
-		self.radius = 'Any'
+		self.radius = radius
+		if not self.radius:
+			self.radius = raw_input("Radius: ")
 
 		Page.__init__(self, "https://www.zillow.com/homes/for_sale/{0}_rb/house,condo,apartment_duplex,mobile,townhouse_type/?fromHomePage=true&shouldFireSellPageImplicitClaimGA=false&fromHomePageTab=buy".format(self.zip), item_type="Housing")
 
@@ -62,21 +65,36 @@ class Zillow(Page):
 
 	def get_house_results(self):
 
-		ads_info = []
-		next_button = self.bro.driver.find_element_by_xpath("//li[@class='zsg-pagination-next']")
-		while next_button:
-			ads = self.bro.driver.find_elements_by_xpath("//div[@id='search-results']//article")
+		zip_code = zipcode.isequal(self.zip)
+		d = zip_code.to_dict()
+		point = (d['lat'], d['lon'])
+		zips = zipcode.isinradius(point, self.radius)
+		zips = [new_zip for new_zip in zips if not new_zip.decommisioned != "FALSE"]
+		zips = [new_zip.zip for new_zip in zips if new_zip.zip_type == "STANDARD"]
 
-			for ad in ads:
-				properties = self._get_ad_properties(ad)
-				if properties: ads_info.extend([properties])
+		ads_info = []
+		for zip in zips:
+			self.bro.driver.get("https://www.zillow.com/homes/for_sale/{0}_rb/house,condo,apartment_duplex,mobile,townhouse_type/?fromHomePage=true&shouldFireSellPageImplicitClaimGA=false&fromHomePageTab=buy".format(zip))
 
 			try:
 				next_button = self.bro.driver.find_element_by_xpath("//li[@class='zsg-pagination-next']")
-				next_button.click()
 			except:
-				break
-			time.sleep(2)  # Should get rid of this
+				next_button = 'Something'
+
+			while next_button:
+				ads = self.bro.driver.find_elements_by_xpath("//div[@id='search-results']//article")
+
+				for ad in ads:
+					properties = self._get_ad_properties(ad)
+					if properties:
+						ads_info.extend([properties])
+
+				try:
+					next_button = self.bro.driver.find_element_by_xpath("//li[@class='zsg-pagination-next']")
+					next_button.click()
+				except:
+					break
+				time.sleep(2)  # Should get rid of this
 
 		self.bro.driver.close()
 		self.write_to_csv("Zillow", ads_info)

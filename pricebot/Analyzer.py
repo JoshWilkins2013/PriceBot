@@ -179,7 +179,7 @@ class Analyzer(object):
 
 	def plot_results(self, item):
 
-		fig = plt.figure(figsize=(13,6))
+		fig = plt.figure(figsize=(13, 6))
 
 		if self.file_type == "Automobile":
 			cols = ['Mileage', 'Price', 'Age', 'Link']
