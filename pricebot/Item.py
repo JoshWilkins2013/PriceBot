@@ -2,6 +2,7 @@ import os
 import time
 import pandas as pd
 
+
 class Item(object):
 
 	def __init__(self, item_type="Automobile", **kwargs):
@@ -9,7 +10,6 @@ class Item(object):
 		print ''
 
 		if item_type == "Automobile":
-
 			user_make = raw_input("Make: ").capitalize()
 			user_model = raw_input("Model: ").capitalize()
 
@@ -20,14 +20,13 @@ class Item(object):
 			#self.make = kwargs.get('make', '')
 			#self.model = kwargs.get('model', '')
 
-		user_zip = raw_input("Zip: ")
-		user_radius = raw_input("Radius: ")
+		if not self.zip:
+			self.zip = raw_input("Zip: ")
+		if not self.radius:
+			self.radius = raw_input("Radius: ")
 
 		#self.radius = kwargs.get('radius', '')
 		#self.zip = kwargs.get('zip_code', '')
-
-		self.zip = user_zip
-		self.radius = user_radius
 
 	def get_year(self, title):
 		""" Get year from title text """
@@ -45,6 +44,8 @@ class Item(object):
 
 		if self.item_type == "Automobile":
 			fname = self.make + self.model + '_' + suffix + '.csv'
+		elif self.item_type == "Housing":
+			fname = self.zip + "_Zillow.csv"
 		else:
 			fname = 'Apts_' + suffix + '.csv'
 

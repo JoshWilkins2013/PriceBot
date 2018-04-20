@@ -4,7 +4,7 @@ from ..Item import Item
 
 class Page(Item):
 
-	def __init__(self, url=None, page_name=''):
+	def __init__(self, url=None, page_name='', item_type="Automobile"):
 
 		if url:
 			self.bro = Browser(url)
@@ -13,4 +13,4 @@ class Page(Item):
 
 		self.page_name = page_name
 
-		Item.__init__(self)
+		Item.__init__(self, item_type=item_type)

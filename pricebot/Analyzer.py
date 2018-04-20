@@ -23,22 +23,24 @@ class Analyzer(object):
 		for item, item_data in self.data.iteritems():
 			if self.file_type == "Automobile":
 				cols = ["Year", "Mileage", "Price"]
-				item_data.Mileage.replace([',', 'mi.', 'nan', ' '], '', regex=True, inplace = True)  # Fix mileage column
+				item_data.Mileage.replace([',', 'mi.', 'nan', ' '], '', regex=True, inplace=True)  # Fix mileage column
 				item_data.Price.replace([',', '\$'], '', regex=True, inplace=True)  # Always fix price column (, and $ removed)
 				item_data[cols] = item_data[cols].apply(pd.to_numeric, errors='coerce')  # Coerces errors into NaN values
-				item_data.drop(item_data[item_data.Year < 2000].index, inplace=True) # Remove cars made before 2000
-				item_data.drop(item_data[item_data.Price > 30000].index, inplace=True) # Remove cars over 30,000
-				item_data.drop(item_data[(item_data.Mileage < 1000) | (item_data.Mileage > 300000)].index, inplace=True) # Remove cars with over 300,000 miles
+				item_data.drop(item_data[item_data.Year < 2000].index, inplace=True)  # Remove cars made before 2000
+				item_data.drop(item_data[item_data.Price > 30000].index, inplace=True)  # Remove cars over 30,000
+				item_data.drop(item_data[(item_data.Mileage < 1000) | (item_data.Mileage > 300000)].index, inplace=True)  # Remove cars with over 300,000 miles
 
 				item_data['Age'] = 2018 - item_data['Year'] # Change years to Age
-			else:
+			elif self.file_type == "Apartment":
 				item_data.Area.replace(['ft2'], '', regex=True, inplace=True)  # Remove ft2 from square footage column
 				item_data.Price.replace([',', '\$'], '', regex=True, inplace=True)  # Always fix price column (, and $ removed)
-				item_data.drop(item_data[item_data.Price > 2500].index, inplace=True) # Remove cars made before 2000
-			
-			item_data.replace('^\s*$', np.nan, regex=True, inplace = True)  # Replace all empty values with np.NaN
+				item_data.drop(item_data[item_data.Price > 2500].index, inplace=True)  # Remove cars made before 2000
+			else:
+				item_data.drop(item_data[item_data.Price > 1000000].index, inplace=True)  # Remove cars made before 2000
+
+			item_data.replace('^\s*$', np.nan, regex=True, inplace=True)  # Replace all empty values with np.NaN
 			item_data = item_data.dropna(axis=1, how='all')  # Remove Null Columns
-			item_data = item_data.apply(pd.to_numeric, errors='coerce') # Coerces errors into NaN values
+			item_data = item_data.apply(pd.to_numeric, errors='coerce')  # Coerces errors into NaN values
 
 	def _get_data_groups(self, dir='.\\Data\\'):
 		""" Gather & sort data by item name in Data folder
@@ -46,7 +48,7 @@ class Analyzer(object):
 		"""
 
 		item_groups = groupby(self._get_data(dir), lambda x: x[:x.find('_')])
-		item_groups = dict( (item, list(files)) for (item, files) in item_groups )
+		item_groups = dict((item, list(files)) for (item, files) in item_groups)
 
 		return item_groups
 
@@ -68,11 +70,14 @@ class Analyzer(object):
 
 			# Now that we know the data is safely stored, remove the old stuff
 			for file_name in file_group:
-				if "Merged" in file_name: continue
+				if "Merged" in file_name:
+					continue
 				os.remove(file_name)
 
 		if 'Mileage' in item_data.columns:
 			self.file_type = "Automobile"
+		elif 'Broker' in item_data.columns:
+			self.file_type = "Housing"
 		else:
 			self.file_type = "Apartment"
 
@@ -81,17 +86,18 @@ class Analyzer(object):
 	def merge_all_data(self):
 		""" Merges all data into same csv file """
 		csv_files = self._get_data()
-
 		all_data = pd.DataFrame()
 		for file_name in csv_files:
 			temp_df = pd.read_csv(file_name)
-			all_data.append(temp_df)
+			all_data = all_data.append(temp_df)
 
-		all_data.to_csv("AllData_Merged.csv", index=False)
+		all_data.to_csv(".\\Data\\AllData_Merged.csv", index=False)
+		self.data["All_Data"] = all_data
 
 		# Now that we know the data is safely stored, remove the old stuff
 		for file_name in csv_files:
-			if "Merged" in file_name: continue
+			if "Merged" in file_name:
+				continue
 			os.remove(file_name)
 
 	def _poly_fit(self, degree=2, **kwargs):
@@ -100,10 +106,10 @@ class Analyzer(object):
 	def best_fit(self, item, col='Age', verbose=False):
 
 		param_grid = {'polynomialfeatures__degree': np.arange(2, 3, 1),
-					  'linearregression__fit_intercept': [True, False],
-					  'linearregression__normalize': [True, False]}
+						'linearregression__fit_intercept': [True, False],
+						'linearregression__normalize': [True, False]}
 		
-		plt.subplot(1,2,1)
+		plt.subplot(1, 2, 1)
 		if col == 'Age':
 			group = self.data[item].groupby(self.data[item][col])[['Price']].mean().reset_index()[col].values
 			mean_costs = self.data[item].groupby(self.data[item][col])[['Price']].mean().reset_index()['Price'].values
@@ -111,12 +117,12 @@ class Analyzer(object):
 			metric = ((mean_costs + median_costs)/2)
 
 			X_test = np.linspace(group[0], group[-1], len(group)+2)[:, None]
-			X = group.reshape(len(group),1)
+			X = group.reshape(len(group), 1)
 			y = metric
 			plt.xlim(xmin=0, xmax=18)
 		else:
 			temp_df = self.data[item][[col, "Price"]].dropna(axis=0, how='any')  # Remove rows with missing values
-			X = temp_df[col].values.reshape(len(temp_df),1)
+			X = temp_df[col].values.reshape(len(temp_df), 1)
 			y = temp_df["Price"].values
 			X_test = np.linspace(min(temp_df[col]), max(temp_df[col]), 1000)[:, None]
 			plt.xlim(xmin=0, xmax=250000)
@@ -138,7 +144,7 @@ class Analyzer(object):
 		plt.legend()
 
 		# Plot its derivative too - Shows depreciation rate better
-		plt.subplot(1,2,2)
+		plt.subplot(1, 2, 2)
 		best_order = grid.best_params_["polynomialfeatures__degree"]
 		coeffs = np.polyfit(X.ravel(), y, best_order)
 
