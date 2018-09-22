@@ -5,6 +5,12 @@ from craigslist import CraigslistHousing
 
 class Craigslist(Page):
 
+	def __init__(self):
+		self.zip = None
+		self.radius = None
+		
+		Page.__init__(self, "https://www.autotempest.com")
+
 	def get_car_results(self):
 		query = self.make + ' ' + self.model
 		cl = CraigslistForSale(site='boston', category='cta', filters={'query':query, 'make':self.make, 'model': self.model, 'min_price': 500})
@@ -32,14 +38,16 @@ class Craigslist(Page):
 				if key:
 					try:
 						value = next((attr.split(':')[1].strip() for x in attr.split(':')[0].strip().split() if x in attrs_to_keep), '')
+						if key == "odometer":  # ToDo: Probably a better spot to put this
+							key = "Mileage"
 						ad_info[key] = value
 					except:
 						pass
-			
-			ads_info.append(ad_info)
 
+			ads_info.append(ad_info)
+			
 		self.bro.driver.close()
-		
+
 		# Save data to csv file
 		self.write_to_csv("Craigslist", ads_info)
 	

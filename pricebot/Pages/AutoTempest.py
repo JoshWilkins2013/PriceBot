@@ -5,11 +5,14 @@ from Page import Page
 class AutoTempest(Page):
 	
 	def __init__(self):
+		self._zip = None
+		self._radius = None
+		
 		Page.__init__(self, "https://www.autotempest.com")
 
 	def get_car_results(self):
 		self.bro.driver.find_element_by_xpath("//form[@id='search-main']//button[@type='submit']").click()  # Submit Button
-		time.sleep(1) # Obnoxious but page closes if this isn't here
+		time.sleep(1)  # Obnoxious but page closes if this isn't here
 		self.bro.driver.find_element_by_xpath("//button[@class='change-sources show-box']").click()  # Sources Button
 		self.bro.driver.find_element_by_xpath("//span[@class='checkboxWrap eba mash']").click()  # Ebay Auctions Button
 		self.bro.driver.find_element_by_xpath("//button[@class='update-results']").click()  # Update Button

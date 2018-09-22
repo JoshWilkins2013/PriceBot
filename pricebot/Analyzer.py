@@ -13,8 +13,16 @@ from sklearn.pipeline import make_pipeline
 
 class Analyzer(object):
 
-	def __init__(self):
-		self.data = {}
+	def __init__(self, file_name=None, file_type="Automobile"):
+		if file_name:
+			self.file_name = file_name
+			self.data = {file_name[:-4]: pd.read_csv(file_name)}
+		else:
+			self.data = {}
+
+		self.file_type = file_type
+		self._clean_results()
+
 		self.merge_results()
 		self.items = self.data.keys()
 
@@ -30,12 +38,14 @@ class Analyzer(object):
 				item_data.drop(item_data[item_data.Price > 30000].index, inplace=True)  # Remove cars over 30,000
 				item_data.drop(item_data[(item_data.Mileage < 1000) | (item_data.Mileage > 300000)].index, inplace=True)  # Remove cars with over 300,000 miles
 
-				item_data['Age'] = 2018 - item_data['Year'] # Change years to Age
+				item_data['Age'] = 2018 - item_data['Year']  # Change years to Age
 			elif self.file_type == "Apartment":
 				item_data.Area.replace(['ft2'], '', regex=True, inplace=True)  # Remove ft2 from square footage column
 				item_data.Price.replace([',', '\$'], '', regex=True, inplace=True)  # Always fix price column (, and $ removed)
 				item_data.drop(item_data[item_data.Price > 2500].index, inplace=True)  # Remove cars made before 2000
 			else:
+				item_data['Street'], item_data['City'], item_data['State'] = item_data['Address'].str.split(',', 2).str
+				del item_data.Address
 				item_data.drop(item_data[item_data.Price > 1000000].index, inplace=True)  # Remove cars made before 2000
 
 			item_data.replace('^\s*$', np.nan, regex=True, inplace=True)  # Replace all empty values with np.NaN
@@ -73,15 +83,16 @@ class Analyzer(object):
 				if "Merged" in file_name:
 					continue
 				os.remove(file_name)
-
-		if 'Mileage' in item_data.columns:
-			self.file_type = "Automobile"
-		elif 'Broker' in item_data.columns:
-			self.file_type = "Housing"
-		else:
-			self.file_type = "Apartment"
-
-		self._clean_results()
+		try:
+			if 'Mileage' in item_data.columns:
+				self.file_type = "Automobile"
+			elif 'Broker' in item_data.columns:
+				self.file_type = "Housing"
+			else:
+				pass  # ToDo: Is this try catch block even needed?
+			self._clean_results()
+		except:
+			print "No files merged"
 
 	def merge_all_data(self):
 		""" Merges all data into same csv file """
@@ -173,7 +184,7 @@ class Analyzer(object):
 			self.data[item]['Price Diff Mileage'] = self.data[item]['Mileage'] - p(self.data[item]['Mileage'])
 			self.data[item]['Depreciate Mileage'] = p2(self.data[item]['Mileage'])*10000
 		
-		self.data[item].to_csv(".\\Data\\" + item + "_Merged.csv", index=False)
+		# self.data[item].to_csv(".\\Data\\" + item + "_Merged.csv", index=False)
 		
 		return coeffs
 
@@ -204,34 +215,24 @@ class Analyzer(object):
 		plt.show()
 		fig.canvas.print_figure('MergedData.svg')
 	
-	def get_best_cars(self, item):
+	def get_best_cars(self, item, filter='Mileage', n_iter=4):
 	
-		for i in range(4):
-			# Remove things above Mileage line of best fit
-			coeffs = self.best_fit(item, 'Mileage')
+		for i in range(n_iter):
+			# Remove things above Age line of best fit
+			coeffs = self.best_fit(item, filter)
+
 			p = np.poly1d(coeffs)
 			plt.clf()
-			plt.scatter(x=self.data[item]['Mileage'], y=self.data[item]['Price'], cmap='plasma_r')
-			self.data[item] = self.data[item][self.data[item]['Price'] < p(self.data[item]['Mileage'])]
-			
-			plt.plot(self.data[item]['Mileage'], p(self.data[item]['Mileage']), 'ro')
-			plt.show()
-			
-			# Remove things above Age line of best fit
-			# coeffs = self.best_fit(item, 'Age')
+			plt.scatter(x=self.data[item][filter], y=self.data[item]['Price'], cmap='plasma_r')
+			self.data[item] = self.data[item][self.data[item]['Price'] < p(self.data[item][filter])]
 
-			# p = np.poly1d(coeffs)
-			# plt.clf()
-			# plt.scatter(x=self.data[item]['Age'], y=self.data[item]['Price'], cmap='plasma_r')
-			# self.data[item] = self.data[item][self.data[item]['Price'] < p(self.data[item]['Age'])]
-			
-			# plt.plot(self.data[item]['Age'], p(self.data[item]['Age']), 'ro')
-			# plt.show()
+			plt.plot(self.data[item][filter], p(self.data[item][filter]), 'ro')
+			plt.show()
 		
 		plt.close()
 		#self.plot_results(item)
-		fig = plt.figure(figsize=(13,6))
-		s = plt.scatter(self.data[item]['Age'], y=self.data[item]['Price'])
+		fig = plt.figure(figsize=(13, 6))
+		s = plt.scatter(self.data[item][filter], y=self.data[item]['Price'])
 		s.set_urls(self.data[item]['Link'].values)
 		plt.show()
-		fig.canvas.print_figure('MergedData.svg')
+		fig.canvas.print_figure('MergedData_Best' + filter + '.svg')
