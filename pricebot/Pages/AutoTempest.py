@@ -1,13 +1,15 @@
 import time
-from Page import Page
+from ..Browser import Browser
 
 
-class AutoTempest(Page):
+class AutoTempest(object):
 	
 	def __init__(self):
 		self._zip = None
 		self._radius = None
-		
+
+		self.bro = Browser("https://" + site + ".craigslist.org/")
+
 		Page.__init__(self, "https://www.autotempest.com")
 
 	def get_car_results(self):

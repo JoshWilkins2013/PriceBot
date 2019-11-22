@@ -1,13 +1,13 @@
-from Page import Page
+from ..Browser import Browser
 
 
-class Ebay(Page):
+class Ebay(object):
 
 	def __init__(self):
 		self._zip = None
 		self._radius = None
 
-		Page.__init__(self, "https://www.ebay.com/sch/6001/i.html?&_sadis=&_stpos=&_nkw=+&LH_BIN=1&_ipg=200")
+		self.bro = Browser("https://www.ebay.com/sch/6001/i.html?&_sadis=&_stpos=&_nkw=+&LH_BIN=1&_ipg=200")
 
 	def _get_page_ads(self):
 		""" Get ads just on this page """

@@ -1,10 +1,11 @@
 import re
 import time
 import zipcode
-from Page import Page
+from ..Item import *
+from ..Browser import Browser
 
 
-class Zillow(Page):
+class Zillow(object):
 
 	def __init__(self, zip=None, radius=None):
 
@@ -18,7 +19,7 @@ class Zillow(Page):
 		if not self.radius:
 			self.radius = raw_input("Radius: ")
 
-		Page.__init__(self, "https://www.zillow.com/homes/for_sale/{0}_rb/house,condo,apartment_duplex,mobile,townhouse_type/?fromHomePage=true&shouldFireSellPageImplicitClaimGA=false&fromHomePageTab=buy".format(self.zip), item_type="Housing")
+		self.bro = Browser("https://www.zillow.com/homes/for_sale/{0}_rb/house,condo,apartment_duplex,mobile,townhouse_type/?fromHomePage=true&shouldFireSellPageImplicitClaimGA=false&fromHomePageTab=buy".format(self.zip), item_type="Housing")
 
 	def _get_ad_property(self, ad, xpath):
 		try:
@@ -97,4 +98,4 @@ class Zillow(Page):
 				time.sleep(2)  # Should get rid of this
 
 		self.bro.driver.close()
-		self.write_to_csv("Zillow", ads_info)
+		write_to_csv("Zillow", ads_info)
