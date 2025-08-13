@@ -1,7 +1,5 @@
 import re
 import time
-import zipcode
-from ..Item import *
 from ..Browser import Browser
 
 
@@ -13,11 +11,11 @@ class Zillow(object):
 
 		self.zip = zip
 		if not self.zip:
-			self.zip = raw_input("Zip: ")
+			self.zip = input("Zip: ")
 
 		self.radius = radius
 		if not self.radius:
-			self.radius = raw_input("Radius: ")
+			self.radius = input("Radius: ")
 
 		self.bro = Browser("https://www.zillow.com/homes/for_sale/{0}_rb/house,condo,apartment_duplex,mobile,townhouse_type/?fromHomePage=true&shouldFireSellPageImplicitClaimGA=false&fromHomePageTab=buy".format(self.zip), item_type="Housing")
 
@@ -65,7 +63,6 @@ class Zillow(object):
 		return properties
 
 	def get_house_results(self):
-
 		zip_code = zipcode.isequal(self.zip)
 		d = zip_code.to_dict()
 		point = (d['lat'], d['lon'])
@@ -99,3 +96,13 @@ class Zillow(object):
 
 		self.bro.driver.close()
 		write_to_csv("Zillow", ads_info)
+
+def write_to_csv(data, fname):
+	""" Write data to csv file """
+	df = pd.DataFrame(data=data)
+	df.apply(pd.to_numeric, errors='ignore')  # Coerces errors into NaN values
+
+	if not os.path.exists(".\\Data"):
+		os.makedirs(".\\Data")
+
+	df.to_csv(".\\Data\\" + fname, encoding='utf-8', index=False)
