@@ -169,7 +169,7 @@ class Craigslist(object):
             options.headless = True
             driver = webdriver.Chrome(options=options)
             driver.get(url)
-            time.sleep(4)  # wait for page to load
+            time.sleep(4) 
 
             html = driver.page_source
             driver.quit()
@@ -200,7 +200,7 @@ class Craigslist(object):
                 date_tag = ad.find('time', class_='result-date')
                 ad_info['Date'] = date_tag['datetime'] if date_tag and date_tag.has_attr('datetime') else ''
 
-                # Housing info (e.g., "2br - 850ft2")
+                # Housing info
                 housing_info = ad.find('span', class_='housing-meta')
                 if housing_info:
                     housing_text = housing_info.text.strip()
