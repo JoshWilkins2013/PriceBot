@@ -55,8 +55,26 @@ class Analyzer(object):
 
 		item_data = pd.DataFrame()
 		for data_file in data_files:
-			df = pd.read_csv(data_file)
-			item_data = item_data.append(df)
+			# Skip if file is empty or too small
+			if os.path.getsize(data_file) < 10:
+				print(f"Skipping empty or invalid file: {data_file}")
+				continue
+
+			try:
+				df = pd.read_csv(data_file)
+			except pd.errors.EmptyDataError:
+				print(f"Skipping empty CSV file: {data_file}")
+				continue
+			except Exception as e:
+				print(f"Error reading {data_file}: {e}")
+				continue
+
+			item_data = item_data.append(df, ignore_index=True)
+
+		if item_data.empty:
+			print(f"No data to merge for {car}.")
+			self.data = None
+			return
 
 		self.file_name = self.car + "_Merged.csv"
 		item_data.to_csv(self.file_path + self.file_name, index=False)

@@ -1,129 +1,256 @@
+import os
+import time
 import pandas as pd
-from ..Item import *
-from ..Browser import Browser
-from datetime import datetime as dt
-from craigslist import CraigslistForSale
-from craigslist import CraigslistHousing
-
+from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
 class Craigslist(object):
+    def __init__(self, site="Boston"):
+        self.site = site
+        self.last_update = None
 
-	def __init__(self, site="Boston"):
-		self.site = site
-		self.bro = None
+    def get_car_results(self, make=None, model=None, zip_code='01923', radius=50, overwrite=True):
+        if not make:
+            make = input("Make: ").capitalize()
+        if not model:
+            model = input("Model: ").capitalize()
+        if not zip_code:
+            zip_code = input("Zip: ")
+        if not radius:
+            radius = input("Radius: ")
 
-		self.last_update = None
+        fname = f"{make}{model}_{self.site}Craigslist.csv"
+        data_path = os.path.join("Data", fname)
 
-	def get_car_results(self, make=None, model=None, zip_code='01923', radius=50, overwrite=False):
-		if not make:
-			make = raw_input("Make: ").capitalize()
-		if not model:
-			model = raw_input("Model: ").capitalize()
-		if not zip_code:
-			zip_code = raw_input("Zip: ")
-		if not radius:
-			radius = raw_input("Radius: ")
+        # Load existing data to get last update time
+        if os.path.isfile(data_path):
+            try:
+                df = pd.read_csv(data_path, usecols=['Date'])
+                df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+                self.last_update = df['Date'].max()
+                print(f"Grabbing data after {self.last_update}")
+            except Exception as e:
+                print(f"Warning: Could not read existing CSV for last_update: {e}")
 
-		cl = CraigslistForSale(site=self.site.lower(), category='cta', filters={'zip_code': zip_code, 'search_distance': radius, 'query': make + ' ' + model, 'make': make, 'model': model, 'min_price': 500})
-		ads = cl.get_results(sort_by='newest')
+        # Build URL
+        url = (f"https://{self.site.lower()}.craigslist.org/search/cta?"
+               f"query={make}+{model}&search_distance={radius}&postal={zip_code}&min_price=500")
 
-		fname = make + model + '_' + self.site + 'Craigslist.csv'
+        print(f"Loading URL: {url}")
 
-		# If data file already exists, only update it with new data (by grabbing latest date)
-		if os.path.isfile(".\\Data\\" + fname):
-			df = pd.read_csv(".\\Data\\" + fname, usecols=['Date'])
-			df['Date'] = pd.to_datetime(df['Date'])
-			self.last_update = str(max(df['Date']))
-			print("Grabbing data after " + self.last_update)
+        options = Options()
+        options.headless = True
+        driver = webdriver.Chrome(options=options)
+        driver.get(url)
+        time.sleep(4)  # Increase if listings still missing
 
-		self.bro = Browser("https://" + self.site + ".craigslist.org/")
+        html = driver.page_source
+        driver.quit()
 
-		ads_info = []
-		for ad in ads:
-			print len(ads_info)  # Some indication of progress
-			ad_info = {}
+        soup = BeautifulSoup(html, 'html.parser')
+        ads = soup.find_all('div', {'class': 'cl-search-result cl-search-view-mode-gallery'})
 
-			ad_info['Title'] = ad['name']
-			ad_info['Link'] = ad['url']
-			ad_info['Price'] = ad['price'][1:]
-			ad_info['Date'] = ad['datetime']
-			ad_info['Year'] = get_year(ad_info['Title'])  # Get year from title text
+        if not ads:
+            print("No listings found or page structure changed.")
+            return self.last_update
 
-			self.bro.driver.get(ad_info['Link'])  # Go to page link
+        ads_info = []
+        
+        for ad in ads:
+            ad_info = {}
+            
+            title_tag = ad.find('a', class_='cl-app-anchor cl-search-anchor text-only posting-title')
+            
+            if title_tag:
+                label_span = title_tag.find('span', class_='label')
+                ad_info['Title'] = label_span.text.strip() if label_span else ''
+                ad_info['Link'] = title_tag['href']
+            else:
+                ad_info['Title'] = ''
+                ad_info['Link'] = ''
 
-			if self.last_update:
-				if dt.strptime(ad_info['Date'], "%Y-%m-%d %H:%M") <= dt.strptime(self.last_update, "%Y-%m-%d %H:%M:%S"):
-					break  # If we already have the data, dont grab it again - stop the process, since its sorted by date
+            #price
+            price_tag = ad.find('span', class_= 'priceinfo')
+            ad_info['Price'] = price_tag.text.strip().lstrip('$') if price_tag else ''
 
-			attrs = self.bro.driver.find_elements_by_xpath("//p[@class='attrgroup']//span")
-			attr_texts = [attr.text for attr in attrs]
-			attrs_to_keep = ["condition", "odometer", "color", "transmission", "type"]
+            #meta
+            meta_tag = ad.find('div', class_='meta')
+            
+            if meta_tag:
+                date_text = meta_tag.contents[0].strip() if meta_tag.contents else ''
+                ad_info['Date'] = date_text
+              
+                meta_texts = []           
+                for elem in meta_tag.children:
+                    if getattr(elem, 'name', None) == 'span' and 'seperator' in elem.get('class', []):
+                        continue
+                    if isinstance(elem, str):
+                        text = elem.strip()
+                        if text and text != date_text:
+                            meta_texts.append(text)
+                    elif elem.name == 'span':
+                        text = elem.get_text(strip=True)
+                        if text:
+                            meta_texts.append(text)
 
-			for attr in attr_texts:
-				key = next((attr.split(':')[0].strip() for x in attr.split(':')[0].strip().split() if x in attrs_to_keep), '')
-				if key:
-					try:
-						value = next((attr.split(':')[1].strip() for x in attr.split(':')[0].strip().split() if x in attrs_to_keep), '')
-						if key == "odometer":  # ToDo: Probably a better spot to put this
-							key = "Mileage"
-						ad_info[key] = value
-					except:
-						pass
+                ad_info['Mileage'] = meta_texts[0] if len(meta_texts) > 0 else ''
+                ad_info['Town'] = meta_texts[1] if len(meta_texts) > 1 else ''
 
-			ads_info.append(ad_info)
+            else:
+                ad_info['Date'] = ''
+                ad_info['Mileage'] = ''
+                ad_info['Town'] = ''
+            
+            if self.last_update:
+                try:
+                    ad_date = pd.to_datetime(ad_info['Date'])
+                    if ad_date <= self.last_update:
+                        continue
+                except Exception:
+                    pass
 
-		self.bro.driver.close()
+            # try:
+            #     ad_info['Year'] = get_year(ad_info['Title'])
+            # except Exception:
+            #     ad_info['Year'] = None
 
-		# Save data to csv file
-		if len(ads_info) > 0:
-			if os.path.isfile(".\\Data\\" + fname) and not overwrite:
-				temp_df = pd.read_csv(".\\Data\\" + fname)
-				temp_df = temp_df.append(ads_info)
-				write_to_csv(temp_df, fname)
-			else:
-				write_to_csv(ads_info, fname)
+            ads_info.append(ad_info)
 
-		return self.last_update
-
-	def get_apt_results(self, zip_code='01923', radius=20, max_price=1600, sub_category=None, overwrite=False):
-		cl = CraigslistHousing(site=self.site.lower(), category=sub_category + '/aap', filters={'zip_code': zip_code, 'search_distance': radius, 'min_price': 500, 'max_price': max_price})
-		results = cl.get_results()
-
-		# If data file already exists, only update it with new data (by grabbing latest date)
-		fname = 'Apartments_' + self.site + 'Craigslist.csv'
-		if not overwrite and os.path.isfile(".\\Data\\" + fname):
-			with open(".\\Data\\" + fname) as f:
-				self.last_update = f.readlines()[1].split(',')[2]
-				print("Grabbing data after " + self.last_update)
-
-		ads_info = []
-		for result in results:
-			print len(ads_info)  # Some indication of progress
-			ad_info = {}
-
-			def get_attr(ad, attr):
-				try: return ad[attr]
-				except: return ''
-
-			ad_info['Title'] = get_attr(result, 'name')
-			ad_info['Area'] = get_attr(result, 'area')
-			ad_info['Bedrooms'] = get_attr(result, 'bedrooms')
-			ad_info['Link'] = get_attr(result, 'url')
-			ad_info['Price'] = get_attr(result, 'price')
-			ad_info['Location'] = get_attr(result, 'geotag')
-			ad_info['Date'] = get_attr(result, 'datetime')
-
-			if self.last_update:
-				if dt.strptime(ad_info['Date'], "%Y-%m-%d %H:%M") <= dt.strptime(self.last_update, "%Y-%m-%d %H:%M:%S"):
-					break  # If we already have the data, dont grab it again - stop the process, since its sorted by date
-
-			ads_info.append(ad_info)
+            if len(ads_info) == 0:
+                print(f"No new ads found for {make} {model} at {self.site}. Not writing CSV.")
+            return self.last_update
+        
 		
-		# Save data to csv file
-		if len(ads_info) > 0:
-			if os.path.isfile(".\\Data\\" + fname) and not overwrite:
-				temp_df = pd.read_csv(".\\Data\\" + fname)
-				temp_df = temp_df.append(ads_info)
-				write_to_csv(temp_df, fname)
-			else:
-				write_to_csv(ads_info, fname)
+        data_dir = os.path.dirname(data_path)
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir)
+
+        # Save or append CSV
+        if os.path.isfile(data_path) and not overwrite:
+            try:
+                existing_df = pd.read_csv(data_path)
+                new_df = pd.DataFrame(ads_info)
+                combined = pd.concat([existing_df, new_df], ignore_index=True)
+                combined.to_csv(data_path, index=False)
+                print(f"Appended {len(new_df)} new records to {data_path}")
+            except Exception as e:
+                print(f"Error appending to existing CSV: {e}")
+        else:
+            pd.DataFrame(ads_info).to_csv(data_path, index=False)
+            print(f"Wrote {len(ads_info)} records to new file {data_path}")
+
+        return self.last_update
+
+
+    #########################################################
+
+    def get_apt_results(self, zip_code='01923', radius=20, max_price=1600, sub_category=None, overwrite=False, min_price=0):
+            fname = f"Apartments_{self.site}Craigslist.csv"
+            data_path = os.path.join("Data", fname)
+
+            # Load last update time if file exists and not overwriting
+            if os.path.isfile(data_path) and not overwrite:
+                try:
+                    df = pd.read_csv(data_path, usecols=['Date'])
+                    df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+                    self.last_update = df['Date'].max()
+                    print(f"Grabbing data after {self.last_update}")
+                except Exception as e:
+                    print(f"Warning: Could not read existing CSV for last_update: {e}")
+
+            # Build the Craigslist URL for apartments
+            url = (f"https://{self.site.lower()}.craigslist.org/search/apa?"
+                f"search_distance={radius}&postal={zip_code}&max_price={max_price}&min_price={min_price}")
+
+            print(f"Loading URL: {url}")
+
+            options = Options()
+            options.headless = True
+            driver = webdriver.Chrome(options=options)
+            driver.get(url)
+            time.sleep(4)  # wait for page to load
+
+            html = driver.page_source
+            driver.quit()
+
+            soup = BeautifulSoup(html, 'html.parser')
+            # Craigslist apartment listings are in li with class 'result-row'
+            ads = soup.find_all('div', {'class': 'cl-search-result cl-search-view-mode-gallery'})
+
+            if not ads:
+                print("No apartment listings found or page structure changed.")
+                return self.last_update
+
+            ads_info = []
+
+            for ad in ads:
+                ad_info = {}
+
+                # Title and link
+                title_tag = ad.find('a', class_='cl-app-anchor cl-search-anchor text-only posting-title')
+                ad_info['Title'] = title_tag.text.strip() if title_tag else ''
+                ad_info['Link'] = title_tag['href'] if title_tag else ''
+
+                # Price
+                price_tag = ad.find('span', class_='priceinfo')
+                ad_info['Price'] = price_tag.text.strip().lstrip('$') if price_tag else ''
+
+                # Date posted
+                date_tag = ad.find('time', class_='result-date')
+                ad_info['Date'] = date_tag['datetime'] if date_tag and date_tag.has_attr('datetime') else ''
+
+                # Housing info (e.g., "2br - 850ft2")
+                housing_info = ad.find('span', class_='housing-meta')
+                if housing_info:
+                    housing_text = housing_info.text.strip()
+                    # Try to extract bedrooms and size from housing text
+                    br = housing_info.find('span', class_='post-bedrooms')
+                    size = housing_info.find('span', class_="post-sqft")
+
+
+                    ad_info['Bedrooms'] = br.text.strip() if br else ''
+                    ad_info['Size'] = size.text.strip() if size else ''
+                else:
+                    ad_info['Bedrooms'] = ''
+                    ad_info['Size'] = ''
+
+                # # Location (neighborhood)
+                # hood = ad.find('span', class_='result-hood')
+                # ad_info['Location'] = hood.text.strip(" ()") if hood else ''
+
+                # Skip older posts based on date
+                if self.last_update:
+                    try:
+                        ad_date = dt.strptime(ad_info['Date'], "%Y-%m-%d %H:%M")
+                        if ad_date <= self.last_update:
+                            continue
+                    except Exception:
+                        pass
+
+                ads_info.append(ad_info)
+
+
+            if len(ads_info) == 0:
+                print(f"No new ads found {self.site}. Not writing CSV.")
+                return self.last_update
+            
+            data_dir = os.path.dirname(data_path)
+            if not os.path.exists(data_dir):
+                os.makedirs(data_dir)
+
+            # Save or append CSV
+            if os.path.isfile(data_path) and not overwrite:
+                try:
+                    existing_df = pd.read_csv(data_path)
+                    new_df = pd.DataFrame(ads_info)
+                    combined = pd.concat([existing_df, new_df], ignore_index=True)
+                    combined.to_csv(data_path, index=False)
+                    print(f"Appended {len(new_df)} new records to {data_path}")
+                except Exception as e:
+                    print(f"Error appending to existing CSV: {e}")
+            else:
+                pd.DataFrame(ads_info).to_csv(data_path, index=False)
+                print(f"Wrote {len(ads_info)} records to new file {data_path}")
+
+            return self.last_update
