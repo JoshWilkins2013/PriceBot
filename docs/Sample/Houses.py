@@ -1,6 +1,6 @@
 from pricebot.Analyzer import Analyzer
-# from pricebot.Pages.Zillow import Zillow
-from pricebot.Pages.Apartments import Apartments
+from pricebot.Pages.Zillow import Zillow
+# from pricebot.Pages.Apartments import Apartments
 
 page = Apartments()
 page.get_apt_results(city="Avon", state="Ny")

@@ -1,14 +1,15 @@
 import os
+import re
 import time
 import pandas as pd
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
+
 class Craigslist(object):
     def __init__(self, site="Boston"):
         self.site = site
-        self.last_update = None
 
     def get_car_results(self, make=None, model=None, zip_code='01923', radius=50, overwrite=True):
         if not make:
@@ -28,10 +29,8 @@ class Craigslist(object):
             try:
                 df = pd.read_csv(data_path, usecols=['Date'])
                 df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
-                self.last_update = df['Date'].max()
-                print(f"Grabbing data after {self.last_update}")
             except Exception as e:
-                print(f"Warning: Could not read existing CSV for last_update: {e}")
+                print(f"Warning: Could not read existing CSV")
 
         # Build URL
         url = (f"https://{self.site.lower()}.craigslist.org/search/cta?"
@@ -53,7 +52,6 @@ class Craigslist(object):
 
         if not ads:
             print("No listings found or page structure changed.")
-            return self.last_update
 
         ads_info = []
         
@@ -95,36 +93,29 @@ class Craigslist(object):
                             meta_texts.append(text)
 
                 ad_info['Mileage'] = meta_texts[0] if len(meta_texts) > 0 else ''
+                ad_info['Mileage'] = re.search("[0-9]+", ad_info['Mileage']).group(0)
                 ad_info['Town'] = meta_texts[1] if len(meta_texts) > 1 else ''
-
             else:
                 ad_info['Date'] = ''
                 ad_info['Mileage'] = ''
                 ad_info['Town'] = ''
-            
-            if self.last_update:
-                try:
-                    ad_date = pd.to_datetime(ad_info['Date'])
-                    if ad_date <= self.last_update:
-                        continue
-                except Exception:
-                    pass
 
-            # try:
-            #     ad_info['Year'] = get_year(ad_info['Title'])
-            # except Exception:
-            #     ad_info['Year'] = None
+            #title
+            title_tag = ad.find('a', class_='cl-app-anchor cl-search-anchor text-only posting-title')
+
+            if title_tag:
+                try:
+                    ad_info['Year'] = re.search("[1|2][0|1|2|9][0-9]{2}", title_tag.text).group(0)
+                except Exception:
+                    ad_info['Year'] = None
 
             ads_info.append(ad_info)
 
             if len(ads_info) == 0:
                 print(f"No new ads found for {make} {model} at {self.site}. Not writing CSV.")
-            return self.last_update
-        
-		
+
         data_dir = os.path.dirname(data_path)
-        if not os.path.exists(data_dir):
-            os.makedirs(data_dir)
+        os.makedirs(data_dir, exist_ok=True)
 
         # Save or append CSV
         if os.path.isfile(data_path) and not overwrite:
@@ -140,9 +131,6 @@ class Craigslist(object):
             pd.DataFrame(ads_info).to_csv(data_path, index=False)
             print(f"Wrote {len(ads_info)} records to new file {data_path}")
 
-        return self.last_update
-
-
     #########################################################
 
     def get_apt_results(self, zip_code='01923', radius=20, max_price=1600, sub_category=None, overwrite=False, min_price=0):
@@ -154,10 +142,8 @@ class Craigslist(object):
                 try:
                     df = pd.read_csv(data_path, usecols=['Date'])
                     df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
-                    self.last_update = df['Date'].max()
-                    print(f"Grabbing data after {self.last_update}")
                 except Exception as e:
-                    print(f"Warning: Could not read existing CSV for last_update: {e}")
+                    print(f"Warning: Could not read existing CSV")
 
             # Build the Craigslist URL for apartments
             url = (f"https://{self.site.lower()}.craigslist.org/search/apa?"
@@ -180,7 +166,6 @@ class Craigslist(object):
 
             if not ads:
                 print("No apartment listings found or page structure changed.")
-                return self.last_update
 
             ads_info = []
 
@@ -204,37 +189,25 @@ class Craigslist(object):
                 housing_info = ad.find('span', class_='housing-meta')
                 if housing_info:
                     housing_text = housing_info.text.strip()
-                    # Try to extract bedrooms and size from housing text
+                    # Try to extract bedrooms and area size from housing text
                     br = housing_info.find('span', class_='post-bedrooms')
-                    size = housing_info.find('span', class_="post-sqft")
-
+                    area = housing_info.find('span', class_="post-sqft")
 
                     ad_info['Bedrooms'] = br.text.strip() if br else ''
-                    ad_info['Size'] = size.text.strip() if size else ''
+                    ad_info['Area'] = area.text.strip() if area else ''
                 else:
                     ad_info['Bedrooms'] = ''
-                    ad_info['Size'] = ''
+                    ad_info['Area'] = ''
 
                 # # Location (neighborhood)
                 # hood = ad.find('span', class_='result-hood')
                 # ad_info['Location'] = hood.text.strip(" ()") if hood else ''
 
-                # Skip older posts based on date
-                if self.last_update:
-                    try:
-                        ad_date = dt.strptime(ad_info['Date'], "%Y-%m-%d %H:%M")
-                        if ad_date <= self.last_update:
-                            continue
-                    except Exception:
-                        pass
-
                 ads_info.append(ad_info)
-
 
             if len(ads_info) == 0:
                 print(f"No new ads found {self.site}. Not writing CSV.")
-                return self.last_update
-            
+
             data_dir = os.path.dirname(data_path)
             if not os.path.exists(data_dir):
                 os.makedirs(data_dir)
@@ -252,5 +225,3 @@ class Craigslist(object):
             else:
                 pd.DataFrame(ads_info).to_csv(data_path, index=False)
                 print(f"Wrote {len(ads_info)} records to new file {data_path}")
-
-            return self.last_update

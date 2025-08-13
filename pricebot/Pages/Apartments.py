@@ -8,7 +8,6 @@ from selenium.webdriver.chrome.options import Options
 class Apartments(object):
     def __init__(self, site="Boston"):
         self.site = site
-        self.last_update = None
 
     def get_apt_results(self, city, state, max_price=4000, overwrite=False, min_price=0):
             fname = f"Apartments_{self.site}Craigslist.csv"
@@ -19,10 +18,8 @@ class Apartments(object):
                 try:
                     df = pd.read_csv(data_path, usecols=['Date'])
                     df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
-                    self.last_update = df['Date'].max()
-                    print(f"Grabbing data after {self.last_update}")
                 except Exception as e:
-                    print(f"Warning: Could not read existing CSV for last_update: {e}")
+                    print(f"Warning: Could not read existing CSV")
 
             # Build the Craigslist URL for apartments
             url = (f"https://apartments.com/{city}-{state}")
@@ -44,7 +41,6 @@ class Apartments(object):
 
             if not ads:
                 print("No apartment listings found or page structure changed.")
-                return self.last_update
 
             ads_info = []
 
@@ -83,22 +79,11 @@ class Apartments(object):
                 # hood = ad.find('span', class_='result-hood')
                 # ad_info['Location'] = hood.text.strip(" ()") if hood else ''
 
-                # Skip older posts based on date
-                if self.last_update:
-                    try:
-                        ad_date = dt.strptime(ad_info['Date'], "%Y-%m-%d %H:%M")
-                        if ad_date <= self.last_update:
-                            continue
-                    except Exception:
-                        pass
-
                 ads_info.append(ad_info)
-
 
             if len(ads_info) == 0:
                 print(f"No new ads found {self.site}. Not writing CSV.")
-                return self.last_update
-            
+
             data_dir = os.path.dirname(data_path)
             if not os.path.exists(data_dir):
                 os.makedirs(data_dir)
@@ -116,5 +101,3 @@ class Apartments(object):
             else:
                 pd.DataFrame(ads_info).to_csv(data_path, index=False)
                 print(f"Wrote {len(ads_info)} records to new file {data_path}")
-
-            return self.last_update

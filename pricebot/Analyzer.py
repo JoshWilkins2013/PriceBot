@@ -11,12 +11,10 @@ from sklearn.pipeline import make_pipeline
 
 
 class Analyzer(object):
-
-	def __init__(self, file_path=".\\Data\\", file_name=None, file_type="Automobile", last_update=None):
+	def __init__(self, file_path=".\\Data\\", file_name=None, file_type="Automobile"):
 		self.file_path = file_path
 		self.file_name = file_name
 		self.file_type = file_type
-		self.last_update = last_update
 
 		if file_name:
 			if file_type == 'Automobile':
@@ -33,6 +31,7 @@ class Analyzer(object):
 			self.data.Mileage.replace([',', 'mi.', 'nan', ' '], '', regex=True, inplace=True)  # Fix mileage column
 			self.data.Price.replace([',', '\$'], '', regex=True, inplace=True)  # Always fix price column (, and $ removed)
 			self.data[cols] = self.data[cols].apply(pd.to_numeric, errors='coerce')  # Coerces errors into NaN values
+			self.data['Mileage'] = self.data['Mileage'] * 1000  # Make in terms of actual mileage
 			self.data.drop(self.data[self.data.Year < 2000].index, inplace=True)  # Remove cars made before 2000
 			self.data.drop(self.data[self.data.Price > 30000].index, inplace=True)  # Remove cars over $30,000
 			self.data.drop(self.data[(self.data.Mileage < 1000) | (self.data.Mileage > 300000)].index, inplace=True)  # Remove cars with over 300,000 miles
@@ -40,6 +39,7 @@ class Analyzer(object):
 		elif self.file_type == "Apartment":
 			self.data.Area.replace(['ft2'], '', regex=True, inplace=True)  # Remove ft2 from square footage column
 			self.data.Price.replace([',', '\$'], '', regex=True, inplace=True)  # Always fix price column (, and $ removed)
+			self.data.Bedrooms.replace(['br', ''], '', regex=True,inplace=True)  # Always fix price column (, and $ removed)
 		else:
 			self.data['Street'], self.data['City'], self.data['State'] = self.data['Address'].str.split(',', 2).str
 			del self.data.Address
@@ -108,7 +108,7 @@ class Analyzer(object):
 		plt.show()
 		fig.canvas.print_figure('MergedData.svg')
 
-	def get_best_cars(self, filter_by='Mileage', n_iter=4, last_update=None, filtered_data=None, plot_show=False):
+	def get_best_cars(self, filter_by='Mileage', n_iter=4, filtered_data=None, plot_show=False):
 		for i in range(n_iter):
 			# Remove things above Age line of best fit
 			coeffs = self.best_fit(col=filter_by)
@@ -139,14 +139,6 @@ class Analyzer(object):
 			s = plt.scatter(x=filtered_merged[filter_by], y=filtered_merged['Price'], color='green')
 			s.set_urls(filtered_merged['Link'].values)
 
-		# Color cars that are new red
-		if self.last_update is not None:
-			self.data['Date'] = pd.to_datetime(self.data['Date'], format='%Y-%m-%d %H:%M')
-			recent_data = self.data[self.data['Date'] > self.last_update]
-			recent_merged = pd.merge(recent_data, self.data, how='inner')  # Not sure why I have to do this
-			s = plt.scatter(x=recent_merged[filter_by], y=recent_merged['Price'], color='red')
-			s.set_urls(recent_merged['Link'].values)
-
 		if plot_show:
 			plt.show()
 
@@ -156,7 +148,6 @@ class Analyzer(object):
 		fig.canvas.print_figure(".\\Best" + filter_by + "\\" + self.file_name[:-4] + '.svg')
 
 	def best_fit(self, col='Age', verbose=False):
-
 		param_grid = {'polynomialfeatures__degree': np.arange(2, 3, 1),
 						'linearregression__fit_intercept': [True, False],
 						'linearregression__normalize': [True, False]}
