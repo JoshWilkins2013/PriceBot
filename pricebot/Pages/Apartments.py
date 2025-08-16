@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
+
 class Apartments(object):
     def __init__(self, site="Boston"):
         self.site = site

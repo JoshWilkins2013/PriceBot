@@ -7,7 +7,7 @@ Abstracted Sites:
 
 ### Sample Runs
 
-Look in the test directory for examples on how to use pricebot\
+Look in the examples directory on how to use pricebot\
 This folder also contains sample outputs of gathered results
 
 Install python 3.12 for all users, and put it into C:\Python312
@@ -16,20 +16,15 @@ Install UV, a python package manager
 
     powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 
-Initiate the venv, py running the following
+Install requirements
 
-    uv venv --python=3.12
+    uv sync
 
-Activate your venv by running
+You may have to activate your venv by running
 
     \.venv\Scripts\activate
 
-Install requirements
+And then add chromedriver.exe to PATH\
+(or put it in c:\python312 assuming python is in your PATH already)\
+You may need to download the latest chrome driver to match the version of chrome you are using
 
-    uv pip install -r requirements.txt
-
-And then pip install pricebot (Not sure if doing just this line will install requirements?)
-
-    uv pip install -e .
-
-And then add chromedriver.exe to PATH (or put it in c:\python312 assuming python is in your PATH already)
