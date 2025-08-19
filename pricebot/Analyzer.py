@@ -50,9 +50,7 @@ class Analyzer(object):
             plt.xlabel('Mileage')
             plt.title('Mileage vs Cost (Age in Color)')
         elif self.file_type == 'Apartment':
-            cols = ['Area', 'Price', 'Link']
-            plt.xlabel('Square Feet')
-            plt.title('SqFt vs Cost (Number of Bedrooms in Color)')
+            cols = ['Price', 'Link']
         else:
             return
 

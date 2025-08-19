@@ -14,8 +14,48 @@ class FacebookAd(Ad):
         if price_tag is not None:
             self.price = price_tag.text.strip().lstrip('$')
 
+    def get_meta_data(self):
+        meta_tags = self.ad.find_all('span', class_="x1lliihq x6ikm8r x10wlt62 x1n2onr6 xlyipyv xuxw1ft x1j85h84")
+        if len(meta_tags) != 0:
+            self.town = meta_tags[0].text
+
+class AptAd(FacebookAd):
+    def __init__(self, ad):
+        super().__init__(ad)
+        self.town = None
+
+    def get_town(self):
+        meta_tags = self.ad.find_all('span', class_="x1lliihq x6ikm8r x10wlt62 x1n2onr6 xlyipyv xuxw1ft x1j85h84")
+        if len(meta_tags) != 0:
+            self.town = meta_tags[0].text
 
 class CarAd(FacebookAd):
+    def __init__(self, ad):
+        super().__init__(ad)
+
+        self.year = None
+        self.mileage = None
+        self.town = None
+
+    def get_year(self):
+        title_tag = self.ad.find('span', class_='x1lliihq x6ikm8r x10wlt62 x1n2onr6')
+        if title_tag is not None:
+            self.title = title_tag.text
+            if year_in_title := re.search("[1|2][0|1|2|9][0-9]{2}", title_tag.text):
+                self.year = year_in_title.group(0)
+
+    def get_meta_data(self):
+        meta_tags = self.ad.find_all('span', class_="x1lliihq x6ikm8r x10wlt62 x1n2onr6 xlyipyv xuxw1ft x1j85h84")
+        if len(meta_tags) != 0:
+            self.town = meta_tags[0].text
+        if len(meta_tags) > 1:
+            try:
+                self.mileage = re.search("[0-9]+", meta_tags[1].text).group(0)
+            except AttributeError:
+                pass
+
+
+class MotorcycleAd(FacebookAd):
     def __init__(self, ad):
         super().__init__(ad)
 
